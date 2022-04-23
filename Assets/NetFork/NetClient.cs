@@ -1,18 +1,17 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.IO;
 using ENet;
 using UnityEngine;
 
 public class NetClient : MonoBehaviour
 {
     public MessageHandler MessageHandler { get; private set; }
+    public bool IsStarted => _transport.IsStarted;
+
+    [SerializeField] private EnetTransport _transport;
 
     [Header("Initial Client Settings")]
     public string ServerIP = "localhost";
     public ushort Port = 7777;
-
-    [SerializeField] private EnetTransport _transport;
 
     private NetBuffers _buffers;
     private Peer _localPeer;
@@ -26,7 +25,7 @@ public class NetClient : MonoBehaviour
         _transport.Stopped += OnStopped;
 
         _transport.Connected += OnConnected;
-        _transport.Disconnected += OnDisconnected;
+        _transport.Disconnected += OnRemotelyDisconnected;
         _transport.Timeout += OnTimeout;
 
         _transport.DataReceived += OnDataReceived;
@@ -35,14 +34,12 @@ public class NetClient : MonoBehaviour
     private void OnDestroy()
     {
         if(_transport == null) return;
-        if(_transport.IsStarted)
-            StopClient();
 
         _transport.Started -= OnStarted;
         _transport.Stopped -= OnStopped;
 
         _transport.Connected -= OnConnected;
-        _transport.Disconnected -= OnDisconnected;
+        _transport.Disconnected -= OnRemotelyDisconnected;
         _transport.Timeout -= OnTimeout;
     }
 
@@ -83,13 +80,11 @@ public class NetClient : MonoBehaviour
         _localPeer.Send(0, ref packet);
     }
 
-    /// <summary>Called when the client is started and attempts to connect.</summary>
     private void OnStarted()
     {
         Debug.Log("Client -> Started, attepmts to connect to server");
     }
 
-    /// <summary>Called when the client is stopped and released all resources.</summary>
     private void OnStopped()
     {
         Debug.Log("Client - Stopped, resources are released");
@@ -102,24 +97,18 @@ public class NetClient : MonoBehaviour
         _localPeer = peer;
     }
 
-    /// <summary>Called when client disconnected from server.
-    /// Called only if client was disconnected remotely.
-    /// If connection is terminated localy, only OnStopped will be called.</summary>
-    private void OnDisconnected(Peer peer)
+    private void OnRemotelyDisconnected(Peer peer)
     {
         Debug.Log("Client -> Disconnected, client will be stopped");
         _transport.StopTransport();
     }
 
-    /// <summary>Callback when client timeout. Used to release resources
-    /// and invoke some events.</summary>
     private void OnTimeout(Peer peer)
     {
         Debug.Log("Client -> Timeout, client will be stopped");
         _transport.StopTransport();
     }
 
-    /// <summary>Called when data is received from server.</summary>
     private void OnDataReceived(Peer peer, Packet packet)
     {
         packet.CopyTo(_buffers.ReceiveBuffer);

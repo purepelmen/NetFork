@@ -20,6 +20,7 @@ public class NetConnection
         Id = peer.ID;
     }
 
+    /// <summary>Sends a message to the remote peer.</summary>
     public void Send<T>(T message, PacketFlags sendFlags) where T : struct, INetMessage
     {
         _buffers.Writer.Seek(0, SeekOrigin.Begin);
@@ -31,6 +32,7 @@ public class NetConnection
         _peer.Send(0, ref packet);
     }
 
+    /// <summary>Disconnects from the server.</summary>
     public void Disconnect()
     {
         _peer.Disconnect(0U);

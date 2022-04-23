@@ -6,14 +6,14 @@ using System.IO;
 
 public class NetServer : MonoBehaviour
 {
-    public NetConnection FirstConnection => _connections.Count > 0 ? _connections[0] : null;
     public MessageHandler MessageHandler { get; private set; }
+    public bool IsStarted => _transport.IsStarted;
+
+    [SerializeField] private EnetTransport _transport;
 
     [Header("Initial Server Settings")]
     public int MaxClients = 10;
     public ushort Port = 7777;
-
-    [SerializeField] private EnetTransport _transport;
 
     private Dictionary<uint, NetConnection> _connections;
     private NetBuffers _buffers;
@@ -38,8 +38,6 @@ public class NetServer : MonoBehaviour
     private void OnDestroy()
     {
         if(_transport == null) return;
-        if(_transport.IsStarted)
-            StopServer();
 
         _transport.Started -= OnStarted;
         _transport.Stopped -= OnStopped;
@@ -55,6 +53,7 @@ public class NetServer : MonoBehaviour
         _transport.UpdateTransport();
     }
 
+    /// <summary>Starts the server and listen for incoming connections.</summary>
     public void StartServer()
     {
         if(DebugErrorIfNoTransport()) return;
@@ -64,12 +63,21 @@ public class NetServer : MonoBehaviour
         _transport.StartServer(Port, MaxClients);
     }
 
+    /// <summary>Disconnects all clients and stops the server.</summary>
     public void StopServer()
     {
         if(DebugErrorIfNoTransport()) return;
         MessageHandler = null;
         
         _transport.StopTransport();
+    }
+
+    public NetConnection GetConnection(uint id)
+    {
+        if(_connections.ContainsKey(id) == false)
+            return null;
+
+        return _connections[id];
     }
 
     private void OnStarted()

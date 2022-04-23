@@ -5,32 +5,31 @@ using UnityEngine;
 
 public class TestingMessages : MonoBehaviour
 {
-    [SerializeField] private NetServer _server;
-    [SerializeField] private NetClient _client;
+    [SerializeField] private NetManager _manager;
 
     System.Diagnostics.Stopwatch _stopwatch;
 
-    [ContextMenu("Register")]
-    public void Register()
+    [ContextMenu("Start and register")]
+    public void StartAndRegister()
     {
-        _server.StartServer();
-        _client.Connect();
+        _manager.Server.StartServer();
+        _manager.Client.Connect();
 
-        _server.MessageHandler.Register<TestMessage>(OnTestMessage);
-        _client.MessageHandler.Register<ServerInfoMessage>(OnServerInfoMessage);
+        _manager.Server.MessageHandler.Register<TestMessage>(OnTestMessage);
+        _manager.Client.MessageHandler.Register<ServerInfoMessage>(OnServerInfoMessage);
     }
 
     [ContextMenu("Send from client")]
     public void SendClient()
     {
-        _client.Send<TestMessage>(new TestMessage() { BirthdayYear = 2020 }, PacketFlags.Reliable);
+        _manager.Client.Send<TestMessage>(new TestMessage() { BirthdayYear = 2020 }, PacketFlags.Reliable);
     }
 
     [ContextMenu("Send from server")]
     public void SendServer()
     {
         _stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        _server.FirstConnection.Send<ServerInfoMessage>(new ServerInfoMessage() 
+        _manager.Server.GetConnection(0).Send<ServerInfoMessage>(new ServerInfoMessage() 
         { 
             UnityVersion = Application.unityVersion,
             CurrentDate = System.DateTime.Now.ToString()

@@ -2,7 +2,8 @@
 using ENet;
 using UnityEngine;
 
-public class EnetTransport : MonoBehaviour
+[Serializable]
+public class EnetTransport
 {
     public bool IsStarted => _host != null;
 
@@ -22,7 +23,7 @@ public class EnetTransport : MonoBehaviour
     private Peer? _localPeer;
     private Host _host;
 
-    private void Awake()
+    public void Initialize()
     {
         if(_isEnetInitialized) return;
 
@@ -30,7 +31,7 @@ public class EnetTransport : MonoBehaviour
         _isEnetInitialized = true;
     }
 
-    private void OnDestroy()
+    public void Deinitialize()
     {
         if(_host != null)
             StopTransport();
@@ -42,7 +43,7 @@ public class EnetTransport : MonoBehaviour
         }
     }
 
-    public void UpdateTransport()
+    public void Update()
     {
         if(_host == null) return;
 
@@ -79,11 +80,7 @@ public class EnetTransport : MonoBehaviour
 
     public void StartServer(ushort port, int maxPeers)
     {
-        if(_host != null)
-        {
-            Debug.LogError("Server already started");
-            return;
-        }
+        if(_host != null) return;
 
         Address address = new Address();
         _host = new Host();
@@ -95,11 +92,7 @@ public class EnetTransport : MonoBehaviour
 
     public void StartClient(string ipAddress, ushort port)
     {
-        if(_host != null)
-        {
-            Debug.LogError("Client already started");
-            return;
-        }
+        if(_host != null) return;
 
         Address address = new Address();
         address.SetHost(ipAddress);
@@ -115,14 +108,10 @@ public class EnetTransport : MonoBehaviour
 
     public void StopTransport()
     {
-        if(_host == null)
-        {
-            Debug.LogError("Server not started");
-            return;
-        }
+        if(_host == null) return;
 
         _localPeer?.DisconnectNow(0U);
-        UpdateTransport();
+        Update();
 
         _localPeer = null;
         _host.Dispose();

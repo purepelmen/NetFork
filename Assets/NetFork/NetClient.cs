@@ -18,7 +18,8 @@ public class NetClient : MonoBehaviour
 
     private void Start()
     {
-        if(DebugErrorIfNoTransport()) return;
+        _transport.Initialize();
+
         _buffers = new NetBuffers(1024);
 
         _transport.Started += OnStarted;
@@ -33,7 +34,7 @@ public class NetClient : MonoBehaviour
 
     private void OnDestroy()
     {
-        if(_transport == null) return;
+        _transport.Deinitialize();
 
         _transport.Started -= OnStarted;
         _transport.Stopped -= OnStopped;
@@ -45,14 +46,17 @@ public class NetClient : MonoBehaviour
 
     private void Update()
     {
-        if(DebugErrorIfNoTransport()) return;
-        _transport.UpdateTransport();
+        _transport.Update();
     }
 
     /// <summary>Starts a client and tries to connect to the server.</summary>
     public void Connect()
     {
-        if(DebugErrorIfNoTransport()) return;
+        if(_transport.IsStarted)
+        {
+            Debug.LogWarning("Client -> Already started, first stop it");
+            return;
+        }
 
         MessageHandler = new MessageHandler();
         _transport.StartClient(ServerIP, Port);
@@ -62,8 +66,12 @@ public class NetClient : MonoBehaviour
     /// Must be used to stop connection attempt or disconnect from the server.</summary>
     public void StopClient()
     {
-        if(DebugErrorIfNoTransport()) return;
-
+        if(_transport.IsStarted == false)
+        {
+            Debug.LogWarning("Client -> Wasn't started");
+            return;
+        }
+        
         MessageHandler = null;
         _transport.StopTransport();
     }
@@ -115,15 +123,5 @@ public class NetClient : MonoBehaviour
         
         _buffers.Reader.BaseStream.Seek(0, SeekOrigin.Begin);
         MessageHandler.Handle(null, _buffers.Reader);
-    }
-
-    private bool DebugErrorIfNoTransport()
-    {
-        if(_transport != null) return false;
-
-        Debug.LogError("No EnetTransport attached to NetClient");
-        enabled = false;
-
-        return true;
     }
 }

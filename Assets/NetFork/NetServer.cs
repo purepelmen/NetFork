@@ -20,7 +20,7 @@ public class NetServer : MonoBehaviour
 
     private void Start()
     {
-        if(DebugErrorIfNoTransport()) return;
+        _transport.Initialize();
 
         _connections = new Dictionary<uint, NetConnection>();
         _buffers = new NetBuffers(1024);
@@ -37,7 +37,7 @@ public class NetServer : MonoBehaviour
 
     private void OnDestroy()
     {
-        if(_transport == null) return;
+        _transport.Initialize();
 
         _transport.Started -= OnStarted;
         _transport.Stopped -= OnStopped;
@@ -49,26 +49,34 @@ public class NetServer : MonoBehaviour
 
     private void Update()
     {
-        if(DebugErrorIfNoTransport()) return;
-        _transport.UpdateTransport();
+        _transport.Update();
     }
 
     /// <summary>Starts the server and listen for incoming connections.</summary>
     public void StartServer()
     {
-        if(DebugErrorIfNoTransport()) return;
-        MessageHandler = new MessageHandler();
+        if(_transport.IsStarted)
+        {
+            Debug.LogWarning("Server -> Already started, first stop it");
+            return;
+        }
 
+        MessageHandler = new MessageHandler();
         _connections.Clear();
+
         _transport.StartServer(Port, MaxClients);
     }
 
     /// <summary>Disconnects all clients and stops the server.</summary>
     public void StopServer()
     {
-        if(DebugErrorIfNoTransport()) return;
+        if(_transport.IsStarted == false)
+        {
+            Debug.LogWarning("Server -> Wasn't started");
+            return;
+        }
+
         MessageHandler = null;
-        
         _transport.StopTransport();
     }
 
@@ -117,15 +125,5 @@ public class NetServer : MonoBehaviour
 
         _buffers.Reader.BaseStream.Seek(0, SeekOrigin.Begin);
         MessageHandler.Handle(connection, _buffers.Reader);
-    }
-
-    private bool DebugErrorIfNoTransport()
-    {
-        if(_transport != null) return false;
-
-        Debug.LogError("No EnetTransport attached to NetServer");
-        enabled = false;
-
-        return true;
     }
 }

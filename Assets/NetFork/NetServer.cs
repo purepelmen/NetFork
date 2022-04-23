@@ -3,11 +3,17 @@ using System.Collections.Generic;
 using UnityEngine;
 using ENet;
 using System.IO;
+using System.Linq;
 
 public class NetServer : MonoBehaviour
 {
     public MessageHandler MessageHandler { get; private set; }
     public bool IsStarted => _transport.IsStarted;
+
+    public event Action<NetConnection> Connected;
+    public event Action<NetConnection> Disconnected;
+    public event Action Started;
+    public event Action Stopped;
 
     [SerializeField] private EnetTransport _transport;
 
@@ -28,9 +34,9 @@ public class NetServer : MonoBehaviour
         _transport.Started += OnStarted;
         _transport.Stopped += OnStopped;
 
-        _transport.Connected += OnConnected;
-        _transport.Disconnected += OnDisconnected;
-        _transport.Timeout += OnTimeout;
+        _transport.Connected += OnClientConnected;
+        _transport.Disconnected += OnClientDisconnected;
+        _transport.Timeout += OnClientTimeout;
 
         _transport.DataReceived += OnDataReceived;
     }
@@ -42,9 +48,9 @@ public class NetServer : MonoBehaviour
         _transport.Started -= OnStarted;
         _transport.Stopped -= OnStopped;
 
-        _transport.Connected -= OnConnected;
-        _transport.Disconnected -= OnDisconnected;
-        _transport.Timeout -= OnTimeout;
+        _transport.Connected -= OnClientConnected;
+        _transport.Disconnected -= OnClientDisconnected;
+        _transport.Timeout -= OnClientTimeout;
     }
 
     private void Update()
@@ -58,6 +64,12 @@ public class NetServer : MonoBehaviour
         if(_transport.IsStarted)
         {
             Debug.LogWarning("Server -> Already started, first stop it");
+            return;
+        }
+
+        if(MaxClients > Library.maxPeers)
+        {
+            Debug.LogError($"Server -> Too high max clients number, the maximum: {Library.maxPeers}");
             return;
         }
 
@@ -76,6 +88,12 @@ public class NetServer : MonoBehaviour
             return;
         }
 
+        _connections.Values.All((conn) =>
+        {
+            Disconnect(conn, (uint) StoppedReason.ServerClosing);
+            return false;
+        });
+
         MessageHandler = null;
         _transport.StopTransport();
     }
@@ -88,34 +106,73 @@ public class NetServer : MonoBehaviour
         return _connections[id];
     }
 
+    public void Disconnect(NetConnection connection)
+    {
+        Disconnect(connection, (uint) StoppedReason.RemotelyDisconnected);
+    }
+
+    private void Disconnect(NetConnection connection, uint disconnectionCode)
+    {
+        if(connection == null)
+        {
+            Debug.LogWarning("Server -> Disconnect -> Connection is null");
+            return;
+        }
+
+        if(_connections.ContainsKey(connection.Id) == false)
+        {
+            Debug.LogWarning("Server -> Disconnect -> Connection wasn't found");
+            return;
+        }
+
+        connection.Disconnect(disconnectionCode);
+        RemoveConnection(connection.Id);
+    }
+
+    private void RemoveConnection(uint id)
+    {
+        NetConnection connection = GetConnection(id);
+        _connections.Remove(id);
+
+        Disconnected?.Invoke(connection);
+    }
+
     private void OnStarted()
     {
         Debug.Log($"Server -> Started, listening on port: {Port}");
+        Started?.Invoke();
     }
 
     private void OnStopped()
     {
         Debug.Log("Server -> Stopped, resources are released");
+        Stopped?.Invoke();
     }
 
-    private void OnConnected(Peer peer)
+    private void OnClientConnected(Peer peer)
     {
         Debug.Log("Server -> Client connected: ID: " + peer.ID + ", IP: " + peer.IP);
 
         NetConnection newConnection = new NetConnection(_buffers, peer);
         _connections.Add(newConnection.Id, newConnection);
+
+        Connected?.Invoke(newConnection);
     }
 
-    private void OnDisconnected(Peer peer)
+    private void OnClientDisconnected(Peer peer, uint data)
     {
         Debug.Log("Server -> Client disconnected: ID: " + peer.ID + ", IP: " + peer.IP);
-        _connections.Remove(peer.ID);
+        uint id = peer.ID;
+
+        RemoveConnection(id);
     }
 
-    private void OnTimeout(Peer peer)
+    private void OnClientTimeout(Peer peer)
     {
         Debug.Log("Server -> Client timeout: ID: " + peer.ID + ", IP: " + peer.IP);
-        _connections.Remove(peer.ID);
+        uint id = peer.ID;
+
+        RemoveConnection(id);
     }
 
     private void OnDataReceived(Peer peer, Packet packet)

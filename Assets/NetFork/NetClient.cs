@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using ENet;
 using UnityEngine;
 
@@ -6,6 +7,10 @@ public class NetClient : MonoBehaviour
 {
     public MessageHandler MessageHandler { get; private set; }
     public bool IsStarted => _transport.IsStarted;
+
+    public event Action Started;
+    public event Action Connected;
+    public event Action<StoppedReason> Stopped;
 
     [SerializeField] private EnetTransport _transport;
 
@@ -74,6 +79,8 @@ public class NetClient : MonoBehaviour
         
         MessageHandler = null;
         _transport.StopTransport();
+        
+        Stopped?.Invoke(StoppedReason.LocalStopped);
     }
 
     /// <summary>Sends a message to the server.</summary>
@@ -91,6 +98,7 @@ public class NetClient : MonoBehaviour
     private void OnStarted()
     {
         Debug.Log("Client -> Started, attepmts to connect to server");
+        Started?.Invoke();
     }
 
     private void OnStopped()
@@ -103,18 +111,33 @@ public class NetClient : MonoBehaviour
     {
         Debug.Log("Client -> Connected to server");
         _localPeer = peer;
+
+        Connected?.Invoke();
     }
 
-    private void OnRemotelyDisconnected(Peer peer)
+    private void OnRemotelyDisconnected(Peer peer, uint data)
     {
         Debug.Log("Client -> Disconnected, client will be stopped");
         _transport.StopTransport();
+
+        switch((StoppedReason) data)
+        {
+            case StoppedReason.ServerClosing:
+                Stopped?.Invoke(StoppedReason.ServerClosing);
+                break;
+
+            default:
+                Stopped?.Invoke(StoppedReason.RemotelyDisconnected);
+                break;
+        }
     }
 
     private void OnTimeout(Peer peer)
     {
         Debug.Log("Client -> Timeout, client will be stopped");
         _transport.StopTransport();
+
+        Stopped?.Invoke(StoppedReason.Timeout);
     }
 
     private void OnDataReceived(Peer peer, Packet packet)

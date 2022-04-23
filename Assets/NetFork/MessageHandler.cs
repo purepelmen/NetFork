@@ -48,7 +48,7 @@ public class MessageHandler
         if(_handlers.TryGetValue(messageId, out ServerHandler handler) == false)
         {
             Debug.LogWarning($"Message Handler -> No handler for message id: {messageId}, disconnecting");
-            connection.Disconnect();
+            connection.Disconnect((uint) StoppedReason.RemoteError);
             return;
         }
 

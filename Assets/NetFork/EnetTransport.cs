@@ -11,7 +11,7 @@ public class EnetTransport
     public event Action Stopped;
 
     public event Action<Peer> Connected;
-    public event Action<Peer> Disconnected;
+    public event Action<Peer, uint> Disconnected;
     public event Action<Peer> Timeout;
     public event Action<Peer, Packet> DataReceived;
 
@@ -64,7 +64,7 @@ public class EnetTransport
                 break;
 
             case ENet.EventType.Disconnect:
-                Disconnected?.Invoke(netEvent.Peer);
+                Disconnected?.Invoke(netEvent.Peer, netEvent.Data);
                 break;
 
             case ENet.EventType.Timeout:

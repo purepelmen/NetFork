@@ -32,9 +32,8 @@ public class NetConnection
         _peer.Send(0, ref packet);
     }
 
-    /// <summary>Disconnects from the server.</summary>
-    public void Disconnect()
+    internal void Disconnect(uint disconnectionCode)
     {
-        _peer.Disconnect(0U);
+        _peer.Disconnect(disconnectionCode);
     }
 }

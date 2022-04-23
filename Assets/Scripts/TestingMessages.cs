@@ -17,6 +17,11 @@ public class TestingMessages : MonoBehaviour
 
         _manager.Server.MessageHandler.Register<TestMessage>(OnTestMessage);
         _manager.Client.MessageHandler.Register<ServerInfoMessage>(OnServerInfoMessage);
+
+        _manager.Client.Stopped += (reason) =>
+        {
+            Debug.Log($"Client -> Disconnected with reason: {reason}");
+        };
     }
 
     [ContextMenu("Send from client")]

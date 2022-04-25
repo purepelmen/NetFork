@@ -8,6 +8,8 @@ public class NetClient : MonoBehaviour
     public MessageHandler MessageHandler { get; private set; }
     public bool IsStarted => _transport.IsStarted;
 
+    public NetConnection LocalConnection { get; private set; }
+
     public event Action Started;
     public event Action Connected;
     public event Action<StoppedReason> Stopped;
@@ -83,18 +85,6 @@ public class NetClient : MonoBehaviour
         Stopped?.Invoke(StoppedReason.LocalStopped);
     }
 
-    /// <summary>Sends a message to the server.</summary>
-    public void Send<T>(T message, PacketFlags sendFlags) where T : struct, INetMessage
-    {
-        _buffers.Writer.Seek(0, SeekOrigin.Begin);
-        _buffers.Writer.Write(message.Id);
-        message.Serialize(_buffers.Writer);
-        
-        Packet packet = default;
-        packet.Create(_buffers.SendBuffer, (int) _buffers.Writer.BaseStream.Position, sendFlags);
-        _localPeer.Send(0, ref packet);
-    }
-
     private void OnStarted()
     {
         Debug.Log("Client -> Started, attepmts to connect to server");
@@ -104,6 +94,8 @@ public class NetClient : MonoBehaviour
     private void OnStopped()
     {
         Debug.Log("Client - Stopped, resources are released");
+
+        LocalConnection = null;
         _localPeer = default;
     }
 
@@ -112,6 +104,7 @@ public class NetClient : MonoBehaviour
         Debug.Log("Client -> Connected to server");
         _localPeer = peer;
 
+        LocalConnection = new NetConnection(_buffers, peer);
         Connected?.Invoke();
     }
 

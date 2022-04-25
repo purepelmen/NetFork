@@ -27,14 +27,15 @@ public class TestingMessages : MonoBehaviour
     [ContextMenu("Send from client")]
     public void SendClient()
     {
-        _manager.Client.Send<TestMessage>(new TestMessage() { BirthdayYear = 2020 }, PacketFlags.Reliable);
+        NetConnection localConnection = _manager.Client.LocalConnection;
+        localConnection.Send(new TestMessage() { BirthdayYear = 2020 });
     }
 
     [ContextMenu("Send from server")]
     public void SendServer()
     {
         _stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        _manager.Server.GetConnection(0).Send<ServerInfoMessage>(new ServerInfoMessage() 
+        _manager.Server.GetConnection(0).Send(new ServerInfoMessage() 
         { 
             UnityVersion = Application.unityVersion,
             CurrentDate = System.DateTime.Now.ToString()
